@@ -1,0 +1,4 @@
+31: tap0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc pfifo_fast master br1 state DOWN mode DEFAULT group default qlen 1000
+    link/ether 66:dc:27:f4:d4:fa brd ff:ff:ff:ff:ff:ff
+32: tap1: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc pfifo_fast master br1 state DOWN mode DEFAULT group default qlen 1000
+    link/ether ee:25:25:64:11:91 brd ff:ff:ff:ff:ff:ff
