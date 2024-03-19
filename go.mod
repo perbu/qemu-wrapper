@@ -1,3 +1,3 @@
-module github.com/perbu/qemu-wrapper
+module github.com/celerway/qemu-wrapper
 
 go 1.22.1

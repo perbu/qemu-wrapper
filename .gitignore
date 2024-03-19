@@ -10,3 +10,5 @@
 # Local configuration file
 /.env
 
+# firmware:
+/firmware

@@ -5,23 +5,43 @@ import (
 	"fmt"
 	"hash/crc32"
 	"os"
+	"os/exec"
 	"os/signal"
 	"runtime"
 	"strings"
 	"syscall"
 )
 
+const (
+	qemuBinary = "qemu-system-x86_64"
+)
+
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
-	err := run(ctx, os.Stdout, os.Args, os.Environ())
+	err := run(ctx, os.Args, os.Environ())
 	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-func run(ctx context.Context, stdout *os.File, args []string, env []string) error {
-
+func run(ctx context.Context, args []string, env []string) error {
+	if len(args) < 2 {
+		return fmt.Errorf("usage: %s <image>", args[0])
+	}
+	firmwarePath := args[1]
+	cmd := exec.CommandContext(ctx, qemuBinary, makeCommandLine(firmwarePath)...)
+	cmd.Env = env
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("qemu start: %w", err)
+	}
+	err := cmd.Wait()
+	if err != nil {
+		return fmt.Errorf("qemu wait: %w", err)
+	}
 	return nil
 }
 
@@ -32,22 +52,26 @@ func makeCommandLine(filename string) []string {
 	} else {
 		ext = "raw"
 	}
-	return []string{
+	options := []string{
 		"-drive", fmt.Sprintf("file=%s,format=%s", filename, ext),
 		"-m", "512",
-		"-netdev", getNativeNetworking(),
-		"-device", "virtio-net,netdev=usernet,mac=" + generateMac(filename),
+		"-netdev", getNativeNetworking("net0"),
+		"-device", "virtio-net,netdev=net0,mac=" + generateMac(filename),
 		"-nographic",
 	}
+	if runtime.GOOS == "linux" {
+		options = append(options, "-enable-kvm")
+	}
+	return options
 }
 
 // getNativeNetworking returns the correct -netdev string for the current OS
-func getNativeNetworking() string {
+func getNativeNetworking(id string) string {
 	switch runtime.GOOS {
 	case "darwin":
-		return "vmnet-shared,id=net0"
+		return fmt.Sprintf("vmnet-shared,id=%s", id)
 	case "linux":
-		return "tap,id=net0,ifname=tap0,br=br0,script=no"
+		return fmt.Sprintf("tap,id=%s,ifname=tap0,br=br0,script=no", id)
 	default:
 		panic("unsupported OS")
 	}
@@ -81,5 +105,5 @@ func generateTapName(input ...string) string {
 func macFromInt(prefix string, i uint32) string {
 	// split into bytes:
 	b1, b2, b3, b4 := byte(i>>24), byte(i>>16), byte(i>>8), byte(i)
-	return fmt.Sprintf("%s:%02X:%02X:%02X", prefix, b1, b2, b3, b4)
+	return fmt.Sprintf("%s:%02X:%02X:%02X:%02X", prefix, b1, b2, b3, b4)
 }
