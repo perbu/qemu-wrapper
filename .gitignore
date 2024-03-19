@@ -1,0 +1,12 @@
+# IDEs
+/.idea
+/.vscode
+
+# Various places to put binaries:
+/build
+/bin
+/tmp
+
+# Local configuration file
+/.env
+
